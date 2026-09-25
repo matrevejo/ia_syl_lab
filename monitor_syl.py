@@ -3,6 +3,7 @@
 
 import requests
 import json
+import os
 from interpreter import interpreter
 
 # 1. Configuración de SYL
@@ -28,6 +29,24 @@ try:
 
             if data.get('event') == 'message':
                 comando = data.get('message', '')
+                
+                # Manejar archivos adjuntos
+                adjunto = data.get('attachment')
+                if adjunto and adjunto.get('url'):
+                    url_adjunto = adjunto.get('url')
+                    nombre_adjunto = adjunto.get('name', 'archivo_adjunto')
+                    ruta_descarga = os.path.join('/tmp', nombre_adjunto)
+                    try:
+                        r = requests.get(url_adjunto)
+                        with open(ruta_descarga, 'wb') as f:
+                            f.write(r.content)
+                        comando += f"\n[El usuario ha enviado un archivo adjunto guardado en: {ruta_descarga}]"
+                    except Exception as e:
+                        comando += f"\n[Error al descargar el archivo adjunto: {e}]"
+                
+                # Ignorar mensajes vacíos o el botón de test ("triggered")
+                if not comando.strip() or comando.strip().lower() == "triggered":
+                    continue
                 
                 # Filtro para ignorar los propios mensajes de SYL y no entrar en bucle
                 if any(tag in comando for tag in ["SYL", "🛡️", "✅", "⏳", "🛑", "❌", "💻", "📄"]):
